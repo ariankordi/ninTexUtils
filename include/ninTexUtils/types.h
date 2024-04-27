@@ -22,9 +22,13 @@
 #if (defined(__cplusplus) && __cplusplus < 201103L) || (!defined(__cplusplus) && (!defined(__STDC_VERSION__) || __STDC_VERSION__ < 201112L))
     #ifndef static_assert
         // https://stackoverflow.com/a/1597129
-        #define TOKENPASTE(x, y) x ## y
-        #define TOKENPASTE2(x, y) TOKENPASTE(x, y)
-        #define static_assert(condition, ...) typedef int TOKENPASTE2(static_assert_, __LINE__)[(condition) ? 1 : -1]
+        #ifdef NDEBUG
+            #define TOKENPASTE(x, y) x ## y
+            #define TOKENPASTE2(x, y) TOKENPASTE(x, y)
+            #define static_assert(condition, ...) typedef int TOKENPASTE2(static_assert_, __LINE__)[(condition) ? 1 : -1]
+        #else
+            #define static_assert(...) ((void)0)
+        #endif
     #endif // static_assert
 
     #include <stdint.h>
@@ -32,6 +36,9 @@
     #ifdef __cplusplus
         #include <cassert>
         #include <cstdint>
+        #ifdef NDEBUG
+              #define static_assert(...) static_assert(true, "")
+        #endif
     #else
         #include <assert.h>
         #include <stdint.h>

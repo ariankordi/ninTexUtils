@@ -461,6 +461,12 @@ void GX2CopySurface(const GX2Surface* src, u32 srcLevel, u32 srcSlice,
     }
 }
 
+#if INTPTR_MAX == INT64_MAX
+    #define PTR_BSWAP(x) ((void*)__builtin_bswap64((uintptr_t)(x)))
+#else // assuming 32 bit
+    #define PTR_BSWAP(x) ((void*)__builtin_bswap32((uint32_t)(x)))
+#endif
+
 void LoadGX2Surface(const void* data, GX2Surface* surf, bool serialized, bool isBigEndian)
 {
     const GX2Surface* src = (const GX2Surface*)data;
@@ -484,9 +490,9 @@ void LoadGX2Surface(const void* data, GX2Surface* surf, bool serialized, bool is
         dst->aa            =        (GX2AAMode)__builtin_bswap32((u32)src->aa);
         dst->use           =    (GX2SurfaceUse)__builtin_bswap32((u32)src->use);
         dst->imageSize     =                   __builtin_bswap32(     src->imageSize);
-        dst->imagePtr      =            (void*)__builtin_bswap32((u32)src->imagePtr);
+        dst->imagePtr      =                   PTR_BSWAP(src->imagePtr);
         dst->mipSize       =                   __builtin_bswap32(     src->mipSize);
-        dst->mipPtr        =            (void*)__builtin_bswap32((u32)src->mipPtr);
+        dst->mipPtr        =                   PTR_BSWAP(src->mipPtr);
         dst->tileMode      =      (GX2TileMode)__builtin_bswap32((u32)src->tileMode);
         dst->swizzle       =                   __builtin_bswap32(     src->swizzle);
         dst->alignment     =                   __builtin_bswap32(     src->alignment);

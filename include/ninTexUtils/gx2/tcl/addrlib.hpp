@@ -167,7 +167,7 @@ private:
         AddrTileMode baseTileMode
     );
 
-    static /* inline */ forceinline AddrTileMode ComputeSurfaceMipLevelTileMode(
+    static inline /* forceinline*/ AddrTileMode ComputeSurfaceMipLevelTileMode(
         AddrTileMode baseTileMode,
         u32 bpp,
         u32 mipLevel,

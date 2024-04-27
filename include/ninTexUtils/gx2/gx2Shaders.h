@@ -86,7 +86,7 @@ typedef struct _GX2VertexShader
     u32 numAttribs;
     GX2AttribVar* attribVars;
     u32 ringItemsize;
-    BOOL hasStreamOut;
+    bool hasStreamOut;
     u32 streamOutVertexStride[4];
     GX2RBuffer shaderProgram;
 }
@@ -133,7 +133,7 @@ typedef struct _GX2GeometryShader
     u32 numSamplers;
     GX2SamplerVar* samplerVars;
     u32 ringItemsize;
-    BOOL hasStreamOut;
+    bool hasStreamOut;
     u32 streamOutVertexStride[4];
     GX2RBuffer shaderProgram;
     GX2RBuffer copyShaderProgram;
