@@ -67,6 +67,13 @@ typedef uint64_t u64;
 typedef float  f32;
 typedef double f64;
 
+// static_assert32 = static_assert but only applies for 32 bit
+#if defined(NDEBUG) || INTPTR_MAX == INT64_MAX
+		#define static_assert32(...) static_assert(true, "")
+#else
+		#define static_assert32 static_assert
+#endif
+
 static_assert(sizeof(s8)  == sizeof(u8)  && sizeof(u8)  == sizeof(char) && sizeof(char) == 1);
 static_assert(sizeof(s16) == sizeof(u16) && sizeof(u16) == 2);
 static_assert(sizeof(s32) == sizeof(u32) && sizeof(u32) == 4);

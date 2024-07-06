@@ -24,7 +24,7 @@ typedef struct _GX2Surface
     u32 mipOffset[13];
 }
 GX2Surface;
-static_assert(sizeof(GX2Surface) == 0x74, "GX2Surface size mismatch");
+static_assert32(sizeof(GX2Surface) == 0x74, "GX2Surface size mismatch");
 
 #ifdef __cplusplus
 extern "C"

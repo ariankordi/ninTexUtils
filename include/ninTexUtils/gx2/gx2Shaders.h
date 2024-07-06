@@ -27,7 +27,7 @@ typedef struct _GX2UniformBlock
     u32 size;
 }
 GX2UniformBlock;
-static_assert(sizeof(GX2UniformBlock) == 0xC, "GX2UniformBlock size mismatch");
+static_assert32(sizeof(GX2UniformBlock) == 0xC, "GX2UniformBlock size mismatch");
 
 typedef struct _GX2UniformVar
 {
@@ -38,7 +38,7 @@ typedef struct _GX2UniformVar
     u32 blockIndex;
 }
 GX2UniformVar;
-static_assert(sizeof(GX2UniformVar) == 0x14, "GX2UniformVar size mismatch");
+static_assert32(sizeof(GX2UniformVar) == 0x14, "GX2UniformVar size mismatch");
 
 typedef struct _GX2UniformInitialValue
 {
@@ -55,7 +55,7 @@ typedef struct _GX2SamplerVar
     u32 location;
 }
 GX2SamplerVar;
-static_assert(sizeof(GX2SamplerVar) == 0xC, "GX2SamplerVar size mismatch");
+static_assert32(sizeof(GX2SamplerVar) == 0xC, "GX2SamplerVar size mismatch");
 
 typedef struct _GX2AttribVar
 {
@@ -65,7 +65,7 @@ typedef struct _GX2AttribVar
     u32 location;
 }
 GX2AttribVar;
-static_assert(sizeof(GX2AttribVar) == 0x10, "GX2AttribVar size mismatch");
+static_assert32(sizeof(GX2AttribVar) == 0x10, "GX2AttribVar size mismatch");
 
 typedef struct _GX2VertexShader
 {
@@ -91,7 +91,7 @@ typedef struct _GX2VertexShader
     GX2RBuffer shaderProgram;
 }
 GX2VertexShader;
-static_assert(sizeof(GX2VertexShader) == 0x134, "GX2VertexShader size mismatch");
+static_assert32(sizeof(GX2VertexShader) == 0x134, "GX2VertexShader size mismatch");
 
 typedef struct _GX2PixelShader
 {
@@ -112,7 +112,7 @@ typedef struct _GX2PixelShader
     GX2RBuffer shaderProgram;
 }
 GX2PixelShader;
-static_assert(sizeof(GX2PixelShader) == 0xE8, "GX2PixelShader size mismatch");
+static_assert32(sizeof(GX2PixelShader) == 0xE8, "GX2PixelShader size mismatch");
 
 typedef struct _GX2GeometryShader
 {
@@ -139,7 +139,7 @@ typedef struct _GX2GeometryShader
     GX2RBuffer copyShaderProgram;
 }
 GX2GeometryShader;
-static_assert(sizeof(GX2GeometryShader) == 0xC0, "GX2GeometryShader size mismatch");
+static_assert32(sizeof(GX2GeometryShader) == 0xC0, "GX2GeometryShader size mismatch");
 
 #ifdef __cplusplus
 extern "C"

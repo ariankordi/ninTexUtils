@@ -14,7 +14,7 @@ typedef struct _GX2Texture
     u32 _regs[5];
 }
 GX2Texture;
-static_assert(sizeof(GX2Texture) == 0x9C, "GX2Texture size mismatch");
+static_assert32(sizeof(GX2Texture) == 0x9C, "GX2Texture size mismatch");
 
 #ifdef __cplusplus
 extern "C"
