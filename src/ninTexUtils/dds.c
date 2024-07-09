@@ -17,7 +17,7 @@ bool DDSReadFile(const void* file, DDSHeader* out_header)
         return false;
 
     /* Minimum required flags */
-    const DDSFlags minFlags = static_cast<DDSFlags>(DDS_FLAGS_CAPS | DDS_FLAGS_HEIGHT |
+    const DDSFlags minFlags = (DDSFlags)(DDS_FLAGS_CAPS | DDS_FLAGS_HEIGHT |
                               DDS_FLAGS_WIDTH | DDS_FLAGS_PIXEL_FORMAT);
 
     if ((temp_header.flags & minFlags) != minFlags)
@@ -67,7 +67,7 @@ bool DDSReadFile(const void* file, DDSHeader* out_header)
     if (temp_header.pixelFormat.size != sizeof(DDSPixelFormat))
         return false;
 
-    const DDSPixelFormatFlags flags = static_cast<DDSPixelFormatFlags>(temp_header.pixelFormat.flags &
+    const DDSPixelFormatFlags flags = (DDSPixelFormatFlags)(temp_header.pixelFormat.flags &
         DDS_PIXEL_FORMAT_FLAGS_ALPHA |
         DDS_PIXEL_FORMAT_FLAGS_FOUR_CC |
         DDS_PIXEL_FORMAT_FLAGS_RGB |

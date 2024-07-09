@@ -1,12 +1,25 @@
 #pragma once
 
 #ifndef forceinline
-    #define forceinline __attribute__((always_inline)) inline
+    #ifdef _MSC_VER
+        #define forceinline __forceinline
+    #else
+        #define forceinline __attribute__((always_inline)) inline
+    #endif
 #endif // forceinline
 
 // Hard-coded for now
-#if (!defined(__BYTE_ORDER__) || !defined(__ORDER_LITTLE_ENDIAN__) || !defined(__ORDER_BIG_ENDIAN__))
-    #error "Need __BYTE_ORDER__, __ORDER_LITTLE_ENDIAN__ and __ORDER_BIG_ENDIAN__ to be defined"
+#if !defined(__BYTE_ORDER__) || !defined(__ORDER_LITTLE_ENDIAN__) || !defined(__ORDER_BIG_ENDIAN__)
+    // Define these in MSVC
+    #ifdef _MSC_VER
+        // NOTE: assuming little endian
+        // ... MSVC only targets x86, ARM anyway, all little endian
+        #define __BYTE_ORDER__ __ORDER_LITTLE_ENDIAN__
+        #define __ORDER_LITTLE_ENDIAN__ 1234
+        #define __ORDER_BIG_ENDIAN__ 4321
+    #else
+        #error "Need __BYTE_ORDER__, __ORDER_LITTLE_ENDIAN__ and __ORDER_BIG_ENDIAN__ to be defined"
+    #endif
 #endif
 
 #if (__BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__ && __BYTE_ORDER__ != __ORDER_BIG_ENDIAN__)
@@ -20,7 +33,7 @@
 #endif // _WIN32
 
 #if (defined(__cplusplus) && __cplusplus < 201103L) || (!defined(__cplusplus) && (!defined(__STDC_VERSION__) || __STDC_VERSION__ < 201112L))
-    #ifndef static_assert
+    #if !defined(static_assert) && !defined(_MSC_VER)
         // https://stackoverflow.com/a/1597129
         #ifdef NDEBUG
             #define TOKENPASTE(x, y) x ## y
@@ -83,4 +96,14 @@ static_assert(sizeof(f64) == 8);
 
 #if defined(_WIN32) && !defined(BOOL)
     #define BOOL int
+#endif
+
+#ifdef _MSC_VER
+    #include <stdlib.h>
+    static inline unsigned long __builtin_bswap32(unsigned long x) {
+        return _byteswap_ulong(x);
+    }
+    static inline unsigned long long __builtin_bswap64(unsigned long long x) {
+        return _byteswap_uint64(x);
+    }
 #endif
