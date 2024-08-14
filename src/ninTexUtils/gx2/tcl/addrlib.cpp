@@ -544,7 +544,7 @@ ADDR_E_RETURNCODE AddrLib::ComputeSurfaceInfo(
 }
 
 ADDR_E_RETURNCODE AddrLib::ComputeSurfaceAddrFromCoord(
-    ADDR_COMPUTE_SURFACE_ADDRFROMCOORD_INPUT* pIn,
+    const ADDR_COMPUTE_SURFACE_ADDRFROMCOORD_INPUT* pIn,
     ADDR_COMPUTE_SURFACE_ADDRFROMCOORD_OUTPUT* pOut
 )
 {
@@ -804,7 +804,7 @@ u32 AddrLib::ComputePixelIndexWithinMicroTile(
     return pixelNumber;
 }
 
-u32 R600AddrLib::ComputeSurfaceNumSplits(
+u32 R600AddrLib::ComputeSurfaceTileSlices(
     AddrTileMode tileMode,
     u32 bpp,
     u32 numSamples
@@ -830,7 +830,7 @@ u32 R600AddrLib::ComputeSurfaceNumSplits(
     return numSplits;
 }
 
-u32 R600AddrLib::ComputeBankPipeRotation(
+u32 R600AddrLib::ComputeSurfaceRotationFromTileMode(
     AddrTileMode tileMode
 )
 {
@@ -863,7 +863,7 @@ u32 R600AddrLib::ComputeBankPipeRotation(
     return rotation;
 }
 
-AddrTileMode R600AddrLib::DegradeBankSwapTileMode(
+AddrTileMode R600AddrLib::ConvertToNonBankSwappedMode(
     AddrTileMode baseTileMode
 )
 {
@@ -903,7 +903,7 @@ AddrTileMode R600AddrLib::ComputeSurfaceMipLevelTileMode(
     u32 numBanks = 4u;
     u32 groupBytes = 256u;
 
-    u32 numSplits = ComputeSurfaceNumSplits(expTileMode, bpp, numSamples);
+    u32 numSplits = ComputeSurfaceTileSlices(expTileMode, bpp, numSamples);
 
     switch (expTileMode)
     {
@@ -952,7 +952,7 @@ AddrTileMode R600AddrLib::ComputeSurfaceMipLevelTileMode(
             expTileMode = ADDR_TM_3B_TILED_THIN1;
     }
 
-    if (ComputeBankPipeRotation(expTileMode) % 2u == 0)
+    if (ComputeSurfaceRotationFromTileMode(expTileMode) % 2u == 0)
     {
         switch (expTileMode)
         {
@@ -981,7 +981,7 @@ AddrTileMode R600AddrLib::ComputeSurfaceMipLevelTileMode(
 
         if (mipLevel > 0)
         {
-            expTileMode = DegradeBankSwapTileMode(expTileMode);
+            expTileMode = ConvertToNonBankSwappedMode(expTileMode);
             u32 microTileThickness = ComputeSurfaceThickness(expTileMode);
             u32 microTileBytes = (numSamples * bpp * microTileThickness * 64 + 7) / 8;
 
@@ -1340,7 +1340,39 @@ bool R600AddrLib::ComputeSurfaceInfoMicroTiled(
     return true;
 }
 
-u32 R600AddrLib::ComputeSurfaceBankSwapWidth(
+bool R600AddrLib::IsThickMacroTiled(
+    AddrTileMode tileMode
+)
+{
+    return (
+        tileMode == ADDR_TM_2D_TILED_THICK || tileMode == ADDR_TM_2B_TILED_THICK ||
+        tileMode == ADDR_TM_3D_TILED_THICK || tileMode == ADDR_TM_3B_TILED_THICK
+    );
+}
+
+u32 R600AddrLib::ComputeMacroTileAspectRatio(
+    AddrTileMode tileMode
+)
+{
+    switch (tileMode)
+    {
+    default:
+    case ADDR_TM_1D_TILED_THIN1:
+    case ADDR_TM_2D_TILED_THIN1:
+    case ADDR_TM_2B_TILED_THIN1:
+    case ADDR_TM_3D_TILED_THIN1:
+    case ADDR_TM_3B_TILED_THIN1:
+        return 1;
+    case ADDR_TM_2D_TILED_THIN2:
+    case ADDR_TM_2B_TILED_THIN2:
+    return 2;
+    case ADDR_TM_2D_TILED_THIN4:
+    case ADDR_TM_2B_TILED_THIN4:
+        return 4;
+    }
+}
+
+u32 R600AddrLib::ComputeSurfaceBankSwappedWidth(
     AddrTileMode tileMode,
     u32 bpp,
     u32 numSamples,
@@ -1370,8 +1402,7 @@ u32 R600AddrLib::ComputeSurfaceBankSwapWidth(
     if (pNumSplits != NULL)
         *pNumSplits = numSplits;
 
-    if (tileMode == ADDR_TM_2D_TILED_THICK || tileMode == ADDR_TM_2B_TILED_THICK ||
-        tileMode == ADDR_TM_3D_TILED_THICK || tileMode == ADDR_TM_3B_TILED_THICK)
+    if (IsThickMacroTiled(tileMode))
     {
         numSamples = 4;
     }
@@ -1383,17 +1414,7 @@ u32 R600AddrLib::ComputeSurfaceBankSwapWidth(
         tileMode == ADDR_TM_3B_TILED_THIN1 ||
         tileMode == ADDR_TM_3B_TILED_THICK)
     {
-        u32 macroAspectRatio = 1;
-        switch (tileMode)
-        {
-        case ADDR_TM_2D_TILED_THIN2:
-        case ADDR_TM_2B_TILED_THIN2:
-            macroAspectRatio = 2;
-            break;
-        case ADDR_TM_2D_TILED_THIN4:
-        case ADDR_TM_2B_TILED_THIN4:
-            macroAspectRatio = 4;
-        }
+        u32 macroAspectRatio = ComputeMacroTileAspectRatio(tileMode);
 
         u32 swapTiles = (swapSize / 2) / bpp;
         if (swapTiles == 0)
@@ -1435,17 +1456,7 @@ bool R600AddrLib::ComputeSurfaceAlignmentsMacroTiled(
     u32 groupBytes = 256u;
     u32 tileSplitBytes = 2048u;
 
-    u32 macroAspectRatio = 1;
-    switch (tileMode)
-    {
-    case ADDR_TM_2D_TILED_THIN2:
-    case ADDR_TM_2B_TILED_THIN2:
-        macroAspectRatio = 2;
-        break;
-    case ADDR_TM_2D_TILED_THIN4:
-    case ADDR_TM_2B_TILED_THIN4:
-        macroAspectRatio = 4;
-    }
+    u32 macroAspectRatio = ComputeMacroTileAspectRatio(tileMode);
 
     u32 thickness = ComputeSurfaceThickness(tileMode);
 
@@ -1499,7 +1510,9 @@ bool R600AddrLib::ComputeSurfaceAlignmentsMacroTiled(
     u32 baseAlign = macroTileBytes / slicesPerTile;
     //if (IsDualBaseAlignNeeded(tileMode))
     //{
-    //    ...
+    //    u32 macroTileSizePerSample = (macroTileWidth * macroTileHeight * bpp + 7) / 8;
+    //    if (baseAlign / macroTileSizePerSample % 2 != 0)
+    //        baseAlign += macroTileSizePerSample;
     //}
 
     *pBaseAlign = baseAlign;
@@ -1572,10 +1585,7 @@ bool R600AddrLib::ComputeSurfaceInfoMacroTiled(
 
     if (baseTileMode != origTileMode && mipLevel > 0)
     {
-        if ((origTileMode == ADDR_TM_2D_TILED_THICK || origTileMode == ADDR_TM_2B_TILED_THICK ||
-             origTileMode == ADDR_TM_3D_TILED_THICK || origTileMode == ADDR_TM_3B_TILED_THICK)
-            && !(baseTileMode == ADDR_TM_2D_TILED_THICK || baseTileMode == ADDR_TM_2B_TILED_THICK ||
-                 baseTileMode == ADDR_TM_3D_TILED_THICK || baseTileMode == ADDR_TM_3B_TILED_THICK))
+        if (IsThickMacroTiled(origTileMode) && !IsThickMacroTiled(baseTileMode))
         {
             ComputeSurfaceAlignmentsMacroTiled(origTileMode, bpp, flags,
                                                numSamples, &baseAlign,
@@ -1590,14 +1600,14 @@ bool R600AddrLib::ComputeSurfaceInfoMacroTiled(
             if (expPitch < pitchAlign * macroTilesPerPipeInterleave
                     || expHeight < heightAlign)
                 return ComputeSurfaceInfoMicroTiled(ADDR_TM_1D_TILED_THIN1,
-                                                     bpp, numSamples,
-                                                     pitchIn, heightIn, numSlicesIn,
-                                                     mipLevel, padDims, flags,
-                                                     pPitchOut,pHeightOut,
-                                                     pNumSlicesOut, pTileModeOut,
-                                                     pSurfSize, pBaseAlign,
-                                                     pPitchAlign, pHeightAlign,
-                                                     pDepthAlign);
+                                                    bpp, numSamples,
+                                                    pitchIn, heightIn, numSlicesIn,
+                                                    mipLevel, padDims, flags,
+                                                    pPitchOut,pHeightOut,
+                                                    pNumSlicesOut, pTileModeOut,
+                                                    pSurfSize, pBaseAlign,
+                                                    pPitchAlign, pHeightAlign,
+                                                    pDepthAlign);
         }
     }
     ComputeSurfaceAlignmentsMacroTiled(baseTileMode, bpp, flags,
@@ -1606,8 +1616,8 @@ bool R600AddrLib::ComputeSurfaceInfoMacroTiled(
                                        &macroTileWidth,
                                        &macroTileHeight);
 
-    u32 bankSwapWidth = ComputeSurfaceBankSwapWidth(baseTileMode, bpp,
-                                                    numSamples, pitchIn, NULL);
+    u32 bankSwapWidth = ComputeSurfaceBankSwappedWidth(baseTileMode, bpp,
+                                                       numSamples, pitchIn, NULL);
     if (pitchAlign < bankSwapWidth)
         pitchAlign = bankSwapWidth;
 
@@ -1657,8 +1667,8 @@ bool R600AddrLib::ComputeSurfaceInfoMacroTiled(
     return true;
 }
 
-bool R600AddrLib::DispatchComputeSurfaceInfo(
-    ADDR_COMPUTE_SURFACE_INFO_INPUT* pIn,
+bool R600AddrLib::ComputeSurfaceInfo(
+    const ADDR_COMPUTE_SURFACE_INFO_INPUT* pIn,
     ADDR_COMPUTE_SURFACE_INFO_OUTPUT* pOut
 )
 {
@@ -1696,7 +1706,7 @@ bool R600AddrLib::DispatchComputeSurfaceInfo(
                                                      flags.value >> 0x1E & 1);
 
     else
-        expTileMode = DegradeBankSwapTileMode(tileMode);
+        expTileMode = ConvertToNonBankSwappedMode(tileMode);
 
     switch (expTileMode)
     {
@@ -1803,7 +1813,7 @@ u64 R600AddrLib::ComputeSurfaceAddrFromCoordMicroTiled(
     return addr;
 }
 
-u32 R600AddrLib::ComputePipeFromCoord(
+u32 R600AddrLib::ComputePipeFromCoordWoRotation(
     u32 x,
     u32 y
 )
@@ -1825,7 +1835,7 @@ u32 R600AddrLib::ComputePipeFromCoord(
     }
 }
 
-u32 R600AddrLib::ComputeBankFromCoord(
+u32 R600AddrLib::ComputeBankFromCoordWoRotation(
     u32 x,
     u32 y
 )
@@ -1936,16 +1946,15 @@ u64 R600AddrLib::ComputeSurfaceAddrFromCoordMacroTiled(
 
     elementOffset /= 8;
 
-    u32 pipe = ComputePipeFromCoord(x, y);
-    u32 bank = ComputeBankFromCoord(x, y);
+    u32 pipe = ComputePipeFromCoordWoRotation(x, y);
+    u32 bank = ComputeBankFromCoordWoRotation(x, y);
 
     u32 bankPipe = bank * numPipes + pipe;
-    u32 bankPipeRotation = ComputeBankPipeRotation(tileMode);
+    u32 bankPipeRotation = ComputeSurfaceRotationFromTileMode(tileMode);
     u32 bankPipeSwizzle = bankSwizzle * numPipes + pipeSwizzle;
 
     u32 microTileIndexZ = slice;
-    if (tileMode == ADDR_TM_2D_TILED_THICK || tileMode == ADDR_TM_2B_TILED_THICK ||
-        tileMode == ADDR_TM_3D_TILED_THICK || tileMode == ADDR_TM_3B_TILED_THICK)
+    if (IsThickMacroTiled(tileMode))
     {
         microTileIndexZ /= 4;
     }
@@ -1995,9 +2004,9 @@ u64 R600AddrLib::ComputeSurfaceAddrFromCoordMacroTiled(
         tileMode == ADDR_TM_3B_TILED_THIN1 ||
         tileMode == ADDR_TM_3B_TILED_THICK)
     {
-        static const u32 bankSwapRotation[] = { 0, 1, 3, 2, 6, 7, 5, 4 };
-        u32 bankSwapWidth = ComputeSurfaceBankSwapWidth(tileMode, bpp, samplesPerSplit, pitch, NULL);
-        bank ^= bankSwapRotation[((macroTileIndexX * macroTilePitch) / bankSwapWidth) % numBanks];
+        static const u32 bankSwapOrder[] = { 0, 1, 3, 2, 6, 7, 5, 4 };
+        u32 bankSwapWidth = ComputeSurfaceBankSwappedWidth(tileMode, bpp, samplesPerSplit, pitch, NULL);
+        bank ^= bankSwapOrder[((macroTileIndexX * macroTilePitch) / bankSwapWidth) % numBanks];
     }
 
     u64 totalOffset = ((sliceOffset + macroTileOffset) >> (numPipeBits + numBankBits)) + elementOffset;
@@ -2014,8 +2023,8 @@ u64 R600AddrLib::ComputeSurfaceAddrFromCoordMacroTiled(
     return addr;
 }
 
-u64 R600AddrLib::DispatchComputeSurfaceAddrFromCoord(
-    ADDR_COMPUTE_SURFACE_ADDRFROMCOORD_INPUT* pIn,
+u64 R600AddrLib::ComputeSurfaceAddrFromCoord(
+    const ADDR_COMPUTE_SURFACE_ADDRFROMCOORD_INPUT* pIn,
     ADDR_COMPUTE_SURFACE_ADDRFROMCOORD_OUTPUT* pOut
 )
 {
@@ -2102,19 +2111,19 @@ u64 R600AddrLib::DispatchComputeSurfaceAddrFromCoord(
 }
 
 ADDR_E_RETURNCODE R600AddrLib::HwlComputeSurfaceInfo(
-    ADDR_COMPUTE_SURFACE_INFO_INPUT* pIn,
+    const ADDR_COMPUTE_SURFACE_INFO_INPUT* pIn,
     ADDR_COMPUTE_SURFACE_INFO_OUTPUT* pOut
 )
 {
     ADDR_E_RETURNCODE retCode = ADDR_OK;
-    if (!DispatchComputeSurfaceInfo(pIn, pOut))
+    if (!ComputeSurfaceInfo(pIn, pOut))
         retCode = ADDR_INVALIDPARAMS;
 
     return retCode;
 }
 
 ADDR_E_RETURNCODE R600AddrLib::HwlComputeSurfaceAddrFromCoord(
-    ADDR_COMPUTE_SURFACE_ADDRFROMCOORD_INPUT* pIn,
+    const ADDR_COMPUTE_SURFACE_ADDRFROMCOORD_INPUT* pIn,
     ADDR_COMPUTE_SURFACE_ADDRFROMCOORD_OUTPUT* pOut
 )
 {
@@ -2129,7 +2138,7 @@ ADDR_E_RETURNCODE R600AddrLib::HwlComputeSurfaceAddrFromCoord(
     }
     else
     {
-        pOut->addr = DispatchComputeSurfaceAddrFromCoord(pIn, pOut);
+        pOut->addr = ComputeSurfaceAddrFromCoord(pIn, pOut);
     }
 
     return retCode;
@@ -2193,7 +2202,7 @@ ADDR_E_RETURNCODE AddrComputeSurfaceInfo(
 }
 
 ADDR_E_RETURNCODE AddrComputeSurfaceAddrFromCoord(
-    ADDR_COMPUTE_SURFACE_ADDRFROMCOORD_INPUT* pIn,
+    const ADDR_COMPUTE_SURFACE_ADDRFROMCOORD_INPUT* pIn,
     ADDR_COMPUTE_SURFACE_ADDRFROMCOORD_OUTPUT* pOut
 )
 {
