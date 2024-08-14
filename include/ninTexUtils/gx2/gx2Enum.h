@@ -32,6 +32,7 @@ typedef enum _GX2SurfaceFormat
     GX2_SURFACE_FORMAT_UNORM_RGB565  = 0x008,
     GX2_SURFACE_FORMAT_UNORM_RGB5A1  = 0x00A,
     GX2_SURFACE_FORMAT_UNORM_A1BGR5  = 0x00C,
+    GX2_SURFACE_FORMAT_UNORM_D24S8   = 0x011,
     GX2_SURFACE_FORMAT_UNORM_R24X8   = 0x011,
     GX2_SURFACE_FORMAT_UNORM_A2BGR10 = 0x01B,
     GX2_SURFACE_FORMAT_UNORM_RGB10A2 = 0x019,
@@ -54,7 +55,7 @@ typedef enum _GX2SurfaceFormat
     GX2_SURFACE_FORMAT_UINT_A2BGR10  = 0x11B,
     GX2_SURFACE_FORMAT_UINT_RGB10A2  = 0x119,
     GX2_SURFACE_FORMAT_UINT_X24G8    = 0x111,
-    GX2_SURFACE_FORMAT_UINT_G8X24    = 0x11C,
+    GX2_SURFACE_FORMAT_UINT_X32G8X24 = 0x11C,
 
     GX2_SURFACE_FORMAT_SNORM_R8      = 0x201,
     GX2_SURFACE_FORMAT_SNORM_RG8     = 0x207,
@@ -90,7 +91,8 @@ typedef enum _GX2SurfaceFormat
     GX2_SURFACE_FORMAT_FLOAT_RGBA16  = 0x820,
     GX2_SURFACE_FORMAT_FLOAT_RG11B10 = 0x816,
     GX2_SURFACE_FORMAT_FLOAT_D24S8   = 0x811,
-    GX2_SURFACE_FORMAT_FLOAT_X8X24   = 0x81C
+    GX2_SURFACE_FORMAT_FLOAT_D32_UINT_S8X24 = 0x81C,
+    GX2_SURFACE_FORMAT_FLOAT_R32X8X24       = 0x81C
 }
 GX2SurfaceFormat;
 static_assert(sizeof(GX2SurfaceFormat) == 4, "GX2SurfaceFormat size mismatch");
@@ -228,10 +230,15 @@ inline AddrFormat GX2SurfaceFormatToAddrFormat(GX2SurfaceFormat format)
     return (AddrFormat)(format & 0x3F);
 }
 
+inline bool AddrFormatIsCompressed(AddrFormat format)
+{
+    /* return ADDR_FMT_BC1 <= format && format <= ADDR_FMT_BC5; */
+    return ((u32)format - (u32)ADDR_FMT_BC1) <= ADDR_FMT_BC5 - ADDR_FMT_BC1;
+}
+
 inline bool GX2SurfaceIsCompressed(GX2SurfaceFormat format)
 {
-    /* return ADDR_FMT_BC1 <= (format & 0x3F) && (format & 0x3F) <= ADDR_FMT_BC5; */
-    return (u32)((format & 0x3F) - ADDR_FMT_BC1) <= ADDR_FMT_BC5 - ADDR_FMT_BC1;
+    return AddrFormatIsCompressed(GX2SurfaceFormatToAddrFormat(format));
 }
 
 inline u8 GX2GetSurfaceFormatBitsPerPixel(GX2SurfaceFormat format)

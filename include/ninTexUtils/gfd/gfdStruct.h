@@ -50,6 +50,8 @@ extern "C"
 {
 #endif
 
+void GFDHeaderVerifyForSerialization(const GFDHeader* header);
+
 void LoadGFDHeader(
     const void* data,
     GFDHeader*  header,
@@ -66,31 +68,35 @@ inline void SaveGFDHeader(
     void* data,
     const GFDHeader* header,
 #ifdef __cplusplus
-    bool        serialized  = true,
     bool        isBigEndian = true
 #else
-    bool        serialized,
     bool        isBigEndian
 #endif
 )
 {
-    if (serialized && header && header->majorVersion == 6 && header->minorVersion == 0)
+    assert(header);
+
+    if (header->majorVersion == 6 && header->minorVersion == 0)
     {
         GFDAlignMode alignMode = header->alignMode;
 
         GFDHeader* header_cc = (GFDHeader*)header;
         header_cc->alignMode = (GFDAlignMode)0;
 
-        LoadGFDHeader(header, (GFDHeader*)data, serialized, isBigEndian);
+        GFDHeaderVerifyForSerialization(header);
+        LoadGFDHeader(header, (GFDHeader*)data, false, isBigEndian);
 
         if (header != data)
             header_cc->alignMode = alignMode;
     }
     else
     {
-        LoadGFDHeader(header, (GFDHeader*)data, serialized, isBigEndian);
+        GFDHeaderVerifyForSerialization(header);
+        LoadGFDHeader(header, (GFDHeader*)data, false, isBigEndian);
     }
 }
+
+void GFDBlockHeaderVerifyForSerialization(const GFDBlockHeader* block);
 
 void LoadGFDBlockHeader(
     const void* data,
@@ -108,15 +114,14 @@ inline void SaveGFDBlockHeader(
     void* data,
     const GFDBlockHeader* block,
 #ifdef __cplusplus
-    bool        serialized  = true,
     bool        isBigEndian = true
 #else
-    bool        serialized,
     bool        isBigEndian
 #endif
 )
 {
-    LoadGFDBlockHeader(block, (GFDBlockHeader*)data, serialized, isBigEndian);
+    GFDBlockHeaderVerifyForSerialization(block);
+    LoadGFDBlockHeader(block, (GFDBlockHeader*)data, false, isBigEndian);
 }
 
 #ifdef __cplusplus

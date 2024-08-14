@@ -42,6 +42,8 @@ void GX2CopySurface(
     u32               dstSlice
 );
 
+void GX2SurfaceVerifyForSerialization(const GX2Surface* surf);
+
 void LoadGX2Surface(
     const void* data,
     GX2Surface* surf,
@@ -58,15 +60,29 @@ inline void SaveGX2Surface(
     void* data,
     const GX2Surface* surf,
 #ifdef __cplusplus
-    bool        serialized  = true,
     bool        isBigEndian = true
 #else
-    bool        serialized,
     bool        isBigEndian
 #endif
 )
 {
-    LoadGX2Surface(surf, (GX2Surface*)data, serialized, isBigEndian);
+    assert(surf);
+
+    void* imagePtr = surf->imagePtr;
+    void* mipPtr = surf->mipPtr;
+
+    GX2Surface* surf_cc = (GX2Surface*)surf;
+    surf_cc->imagePtr = (void*)0;
+    surf_cc->mipPtr = (void*)0;
+
+    GX2SurfaceVerifyForSerialization(surf);
+    LoadGX2Surface(surf, (GX2Surface*)data, false, isBigEndian);
+
+    if (surf != data)
+    {
+        surf_cc->imagePtr = imagePtr;
+        surf_cc->mipPtr = mipPtr;
+    }
 }
 
 void GX2SurfacePrintInfo(const GX2Surface* surf);

@@ -29,7 +29,7 @@ public:
         destroy();
     }
 
-    bool setVersion(u32 majorVersion, u32 minorVersion, u32* pSurfMode = NULL, u32* pPerfModulation = NULL)
+    bool setVersion(u32 majorVersion, u32 minorVersion, bool updateTextureRegs = true)
     {
         if (majorVersion != 6 && majorVersion != 7)
             return false;
@@ -37,24 +37,17 @@ public:
         mHeader.majorVersion = majorVersion;
         mHeader.minorVersion = minorVersion;
 
-        /*
-        u32 surfMode       = (majorVersion == 6) ? 1 : 0;
-        u32 perfModulation = (majorVersion == 6) ? 0 : 7;
+        const bool gfd_v7 = majorVersion == 7 ? true : false;
 
-        for (u32 i = 0; i < mTextures.size(); i++)
-            GX2InitTextureRegs(&mTextures[i], surfMode, perfModulation);
-
-        if (pSurfMode)
-            *pSurfMode = surfMode;
-
-        if (pPerfModulation)
-            *pPerfModulation = perfModulation;
-        */
+        if (updateTextureRegs)
+            for (u32 i = 0; i < mTextures.size(); i++)
+                GX2InitTextureRegs(&mTextures[i], gfd_v7);
 
         return true;
     }
 
     size_t load(const void* data);
+    std::vector<u8> saveGTX() const;
     void destroy();
 
 public:

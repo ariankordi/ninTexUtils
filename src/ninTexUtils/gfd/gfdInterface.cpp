@@ -6,6 +6,15 @@
 extern "C"
 {
 
+void GFDHeaderVerifyForSerialization(const GFDHeader* header)
+{
+    assert(header->magic        == 0x47667832u); // Gfx2
+    assert(header->size         == sizeof(GFDHeader));
+    assert(header->majorVersion == 6 ||
+           header->majorVersion == 7);
+    assert(header->gpuVersion   == GFD_GPU_VERSION_GPU7);
+}
+
 void LoadGFDHeader(const void* data, GFDHeader* header, bool serialized, bool isBigEndian)
 {
     const GFDHeader* src = (const GFDHeader*)data;
@@ -34,15 +43,20 @@ void LoadGFDHeader(const void* data, GFDHeader* header, bool serialized, bool is
 
     if (serialized)
     {
-        assert(dst->magic        == 0x47667832u); // Gfx2
-        assert(dst->size         == sizeof(GFDHeader));
-        assert(dst->majorVersion == 6 ||
-               dst->majorVersion == 7);
-        assert(dst->gpuVersion   == GFD_GPU_VERSION_GPU7);
+        GFDHeaderVerifyForSerialization(dst);
 
         if (dst->majorVersion == 6 && dst->minorVersion == 0)
             dst->alignMode = GFD_ALIGN_MODE_UNDEF;
     }
+}
+
+void GFDBlockHeaderVerifyForSerialization(const GFDBlockHeader* block)
+{
+    assert(block->magic        == 0x424C4B7Bu); // BLK{
+    assert(block->size         == sizeof(GFDBlockHeader));
+    assert(block->majorVersion == 0 ||
+           block->majorVersion == 1);
+    assert(block->type         != GFD_BLOCK_TYPE_INVALID);
 }
 
 void LoadGFDBlockHeader(const void* data, GFDBlockHeader* block, bool serialized, bool isBigEndian)
@@ -73,11 +87,7 @@ void LoadGFDBlockHeader(const void* data, GFDBlockHeader* block, bool serialized
 
     if (serialized)
     {
-        assert(dst->magic        == 0x424C4B7Bu); // BLK{
-        assert(dst->size         == sizeof(GFDBlockHeader));
-        assert(dst->majorVersion == 0 ||
-               dst->majorVersion == 1);
-        assert(dst->type         != GFD_BLOCK_TYPE_INVALID);
+        GFDBlockHeaderVerifyForSerialization(dst);
 
         if (dst->type == GFD_BLOCK_TYPE_END)
         {
@@ -215,6 +225,127 @@ size_t GFDFile::load(const void* data)
         mHeader.alignMode = GFD_ALIGN_MODE_DISABLE;
 
     return (uintptr_t)data_u8 - (uintptr_t)data;
+}
+
+static inline void BufferAppend_GFDHeader(std::vector<u8>& buffer, const GFDHeader& header)
+{
+    size_t pos = buffer.size();
+    buffer.resize(pos + sizeof(GFDHeader));
+    SaveGFDHeader((GFDHeader*)(buffer.data() + pos), &header);
+}
+
+static inline void BufferAppend_GFDBlockHeader(std::vector<u8>& buffer, const GFDBlockHeader& blockHeader)
+{
+    size_t pos = buffer.size();
+    buffer.resize(pos + sizeof(GFDBlockHeader));
+    SaveGFDBlockHeader((GFDBlockHeader*)(buffer.data() + pos), &blockHeader);
+}
+
+static inline void BufferAppend_GX2Texture(std::vector<u8>& buffer, const GX2Texture& texture)
+{
+    size_t pos = buffer.size();
+    buffer.resize(pos + sizeof(GX2Texture));
+    SaveGX2Texture((GX2Texture*)(buffer.data() + pos), &texture);
+}
+
+static inline void BufferAppend_Span(std::vector<u8>& buffer, const void* ptr, size_t size)
+{
+    size_t pos = buffer.size();
+    buffer.resize(pos + size);
+    std::memcpy(buffer.data() + pos, ptr, size);;
+}
+
+static inline size_t RoundUpSize(size_t x, size_t y)
+{
+    return ((x - 1) | (y - 1)) + 1;
+}
+
+static inline void BufferAppend_GFDBlockHeader_Pad(std::vector<u8>& buffer, GFDBlockHeader& blockHeader, u32 alignment)
+{
+    //   Calculate the needed pad
+    const size_t dataPos = buffer.size() + sizeof(GFDBlockHeader) * 2;
+    const size_t padSize = RoundUpSize(dataPos, alignment) - dataPos;
+
+    blockHeader.type = GFD_BLOCK_TYPE_PAD;
+    blockHeader.dataSize = padSize;
+
+    BufferAppend_GFDBlockHeader(buffer, blockHeader);
+    buffer.resize(buffer.size() + padSize);
+}
+
+std::vector<u8> GFDFile::saveGTX() const
+{
+    GFDBlockHeader blockHeader;
+    blockHeader.magic = 0x424C4B7Bu; // BLK{
+    blockHeader.size = sizeof(GFDBlockHeader);
+    // Determine the usual block header version from the file version
+    if (mHeader.majorVersion == 6 && mHeader.minorVersion == 0)
+    {
+        blockHeader.majorVersion = 0;
+        blockHeader.minorVersion = 1;
+    }
+    else
+    {
+        blockHeader.majorVersion = 1;
+        blockHeader.minorVersion = 0;
+    }
+
+    // Check alignment
+    assert(mHeader.alignMode != GFD_ALIGN_MODE_UNDEF && "Please choose an alignment mode before saving.");
+    const bool align = mHeader.alignMode == GFD_ALIGN_MODE_ENABLE;
+
+    std::vector<u8> outBuffer;
+
+    BufferAppend_GFDHeader(outBuffer, mHeader);
+
+    for (const GX2Texture& texture : mTextures)
+    {
+        // Write GX2Texture Header block
+        if (blockHeader.majorVersion == 1)
+            blockHeader.typeV1 = GFD_BLOCK_TYPE_V1_GX2_TEX_HEADER;
+        else
+            blockHeader.typeV0 = GFD_BLOCK_TYPE_V0_GX2_TEX_HEADER;
+        blockHeader.dataSize = sizeof(GX2Texture);
+
+        BufferAppend_GFDBlockHeader(outBuffer, blockHeader);
+        BufferAppend_GX2Texture(outBuffer, texture);
+
+        // Write Pad block for the image data
+        if (align)
+            BufferAppend_GFDBlockHeader_Pad(outBuffer, blockHeader, texture.surface.alignment);
+
+        if (blockHeader.majorVersion == 1)
+            blockHeader.typeV1 = GFD_BLOCK_TYPE_V1_GX2_TEX_IMAGE_DATA;
+        else
+            blockHeader.typeV0 = GFD_BLOCK_TYPE_V0_GX2_TEX_IMAGE_DATA;
+        blockHeader.dataSize = texture.surface.imageSize;
+
+        BufferAppend_GFDBlockHeader(outBuffer, blockHeader);
+        BufferAppend_Span(outBuffer, texture.surface.imagePtr, texture.surface.imageSize);
+
+        if (texture.surface.mipPtr)
+        {
+            // Write Pad block for the mipmap data
+            if (align)
+                BufferAppend_GFDBlockHeader_Pad(outBuffer, blockHeader, texture.surface.alignment);
+
+            if (blockHeader.majorVersion == 1)
+                blockHeader.typeV1 = GFD_BLOCK_TYPE_V1_GX2_TEX_MIP_DATA;
+            else
+                blockHeader.typeV0 = GFD_BLOCK_TYPE_V0_GX2_TEX_MIP_DATA;
+            blockHeader.dataSize = texture.surface.mipSize;
+
+            BufferAppend_GFDBlockHeader(outBuffer, blockHeader);
+            BufferAppend_Span(outBuffer, texture.surface.mipPtr, texture.surface.mipSize);
+        }
+    }
+
+    blockHeader.type = GFD_BLOCK_TYPE_END;
+    blockHeader.dataSize = 0;
+
+    BufferAppend_GFDBlockHeader(outBuffer, blockHeader);
+
+    return outBuffer;
 }
 
 void GFDFile::destroy()
