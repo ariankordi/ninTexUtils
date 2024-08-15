@@ -323,9 +323,9 @@ void GX2TextureFromLinear2D(GX2Texture* texture, u32 width, u32 height, u32 numM
 
     GX2InitTextureRegs(texture, gfd_v7);
 
-    texture->surface.imagePtr = (u8*)malloc(texture->surface.imageSize);
+    texture->surface.imagePtr = (u8*)std::malloc(texture->surface.imageSize);
     if (numMips > 1)
-        texture->surface.mipPtr = (u8*)malloc(texture->surface.mipSize);
+        texture->surface.mipPtr = (u8*)std::malloc(texture->surface.mipSize);
     else
         texture->surface.mipPtr = nullptr;
 
@@ -702,7 +702,8 @@ u8* GX2TextureToDDS(const GX2Texture* texture, size_t* fileSize, bool printInfo)
     // Allocate output buffer
     const size_t imageOffs = sizeof(DDSHeader);
     const size_t mipOffs = imageOffs + linear_surface.imageSize;
-    u8* file = (u8*)malloc(mipOffs + linear_surface.mipSize);
+    const size_t _fileSize = mipOffs + linear_surface.mipSize;
+    u8* file = (u8*)std::malloc(_fileSize);
 
     // Set the image data pointer
     linear_surface.imagePtr = file + imageOffs;
@@ -870,6 +871,7 @@ u8* GX2TextureToDDS(const GX2Texture* texture, size_t* fileSize, bool printInfo)
         }
     }
 
+    *fileSize = _fileSize;
     return file;
 }
 
