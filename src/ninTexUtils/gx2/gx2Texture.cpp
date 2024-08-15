@@ -335,7 +335,7 @@ void GX2TextureFromLinear2D(GX2Texture* texture, u32 width, u32 height, u32 numM
         GX2CopySurface(&linear_surface, i, 0, &texture->surface, i, 0);
 }
 
-static const std::unordered_map<std::string, const u32> fourCCs {
+static const std::unordered_map<std::string, const u32> fourCCs_import {
     { "DXT1", GX2_SURFACE_FORMAT_UNORM_BC1 << 8 |  8 },
     { "DXT2", GX2_SURFACE_FORMAT_UNORM_BC2 << 8 | 16 },
     { "DXT3", GX2_SURFACE_FORMAT_UNORM_BC2 << 8 | 16 },
@@ -349,10 +349,10 @@ static const std::unordered_map<std::string, const u32> fourCCs {
     { "BC5S", GX2_SURFACE_FORMAT_SNORM_BC5 << 8 | 16 }
 };
 
-static const std::unordered_map< u32, const std::unordered_map< u32, const std::array<u32, 4> > > validComps {
-    {  8, { { GX2_SURFACE_FORMAT_UNORM_R8,      { 0x000000ff,          0                         } },
-            { GX2_SURFACE_FORMAT_UNORM_RG4,     { 0x0000000f, 0x000000f0,          0             } } } },
-    { 16, { { GX2_SURFACE_FORMAT_UNORM_RG8,     { 0x000000ff, 0x0000ff00,          0             } },
+static const std::unordered_map< u32, const std::unordered_map< u32, const std::array<u32, 4> > > validComps_import {
+    {  8, { { GX2_SURFACE_FORMAT_UNORM_R8,      { 0x000000ff,          0,          0,          0 } },
+            { GX2_SURFACE_FORMAT_UNORM_RG4,     { 0x0000000f, 0x000000f0,          0,          0 } } } },
+    { 16, { { GX2_SURFACE_FORMAT_UNORM_RG8,     { 0x000000ff, 0x0000ff00,          0,          0 } },
             { GX2_SURFACE_FORMAT_UNORM_RGB565,  { 0x0000001f, 0x000007e0, 0x0000f800,          0 } },
             { GX2_SURFACE_FORMAT_UNORM_RGB5A1,  { 0x0000001f, 0x000003e0, 0x00007c00, 0x00008000 } },
             { GX2_SURFACE_FORMAT_UNORM_RGBA4,   { 0x0000000f, 0x000000f0, 0x00000f00, 0x0000f000 } } } },
@@ -409,8 +409,8 @@ void GX2TextureFromDDS(GX2Texture* texture, const u8* file, size_t fileSize, GX2
     {
         // Get and validate the bits-per-pixel
         const u32 bitsPerPixel = header.pixelFormat.rgbBitCount;
-        const auto& it_bpp_validComps = validComps.find(bitsPerPixel);
-        if (it_bpp_validComps == validComps.end())
+        const auto& it_bpp_validComps = validComps_import.find(bitsPerPixel);
+        if (it_bpp_validComps == validComps_import.end())
         {
             std::cerr << "Unrecognized number of bits per pixel: " << bitsPerPixel << std::endl;
             assert(false);
@@ -536,8 +536,8 @@ void GX2TextureFromDDS(GX2Texture* texture, const u8* file, size_t fileSize, GX2
         assert(fourCC != "DX10" && "DX10 DDS files are not supported!");
 
         // Validate FourCC
-        const auto& it_fourCC = fourCCs.find(fourCC);
-        if (it_fourCC == fourCCs.end())
+        const auto& it_fourCC = fourCCs_import.find(fourCC);
+        if (it_fourCC == fourCCs_import.end())
         {
             std::cerr << "Unrecognized FourCC: " << fourCC << std::endl;
             assert(false);
@@ -617,6 +617,260 @@ void GX2TextureFromDDS(GX2Texture* texture, const u8* file, size_t fileSize, GX2
     // Print debug info if specified
     if (printInfo)
         GX2TexturePrintInfo(texture);
+}
+
+static const std::unordered_map<u32, const std::string> fourCCs_export {
+    { GX2_SURFACE_FORMAT_UNORM_BC1, "DXT1" },
+    { GX2_SURFACE_FORMAT_UNORM_BC2, "DXT3" },
+    { GX2_SURFACE_FORMAT_UNORM_BC3, "DXT5" },
+    { GX2_SURFACE_FORMAT_UNORM_BC4, "ATI1" },
+    { GX2_SURFACE_FORMAT_SNORM_BC4, "BC4S" },
+    { GX2_SURFACE_FORMAT_UNORM_BC5, "ATI2" },
+    { GX2_SURFACE_FORMAT_SNORM_BC5, "BC5S" }
+};
+
+static const std::unordered_map< u32, const std::array<u32, 4> > validComps_export {
+    { GX2_SURFACE_FORMAT_UNORM_R8,      { 0x000000ff,          0,          0,          0 } },
+    { GX2_SURFACE_FORMAT_UNORM_RG4,     { 0x0000000f, 0x000000f0,          0,          0 } },
+    { GX2_SURFACE_FORMAT_UNORM_RG8,     { 0x000000ff, 0x0000ff00,          0,          0 } },
+    { GX2_SURFACE_FORMAT_UNORM_RGB565,  { 0x0000001f, 0x000007e0, 0x0000f800,          0 } },
+    { GX2_SURFACE_FORMAT_UNORM_RGB5A1,  { 0x0000001f, 0x000003e0, 0x00007c00, 0x00008000 } },
+    { GX2_SURFACE_FORMAT_UNORM_RGBA4,   { 0x0000000f, 0x000000f0, 0x00000f00, 0x0000f000 } },
+    { GX2_SURFACE_FORMAT_UNORM_RGB10A2, { 0x3ff00000, 0x000ffc00, 0x000003ff, 0xc0000000 } },
+    { GX2_SURFACE_FORMAT_UNORM_RGBA8,   { 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000 } }
+};
+
+u8* GX2TextureToDDS(const GX2Texture* texture, size_t* fileSize, bool printInfo)
+{
+    // Print debug info if specified
+    if (printInfo)
+        GX2TexturePrintInfo(texture);
+
+    // Check if format is supported
+    const GX2SurfaceFormat format = texture->surface.format;
+    switch (format)
+    {
+    case GX2_SURFACE_FORMAT_UNORM_R8:
+    case GX2_SURFACE_FORMAT_UNORM_RG4:
+    case GX2_SURFACE_FORMAT_UNORM_RG8:
+    case GX2_SURFACE_FORMAT_UNORM_RGB565:
+    case GX2_SURFACE_FORMAT_UNORM_RGB5A1:
+    case GX2_SURFACE_FORMAT_UNORM_RGBA4:
+    case GX2_SURFACE_FORMAT_UNORM_RGB10A2:
+    case GX2_SURFACE_FORMAT_UNORM_RGBA8:
+    case GX2_SURFACE_FORMAT_SRGB_RGBA8:
+    case GX2_SURFACE_FORMAT_UNORM_BC1:
+    case GX2_SURFACE_FORMAT_SRGB_BC1:
+    case GX2_SURFACE_FORMAT_UNORM_BC2:
+    case GX2_SURFACE_FORMAT_SRGB_BC2:
+    case GX2_SURFACE_FORMAT_UNORM_BC3:
+    case GX2_SURFACE_FORMAT_SRGB_BC3:
+    case GX2_SURFACE_FORMAT_UNORM_BC4:
+    case GX2_SURFACE_FORMAT_SNORM_BC4:
+    case GX2_SURFACE_FORMAT_UNORM_BC5:
+    case GX2_SURFACE_FORMAT_SNORM_BC5:
+        break;
+    default:
+        assert(false && "Unimplemented texture format.");
+        return nullptr;
+    }
+
+    assert(texture->surface.dim == GX2_SURFACE_DIM_2D);
+    assert(texture->surface.depth <= 1);
+    assert(texture->surface.aa == GX2_AA_MODE_1X);
+    assert(texture->surface.use & GX2_SURFACE_USE_TEXTURE);
+
+    const u32 width = texture->surface.width;
+    const u32 height = texture->surface.height;
+    const u32 numMips = texture->surface.numMips;
+
+    // Create a new GX2Surface to store the untiled texture
+    GX2Surface linear_surface;
+    linear_surface.dim = GX2_SURFACE_DIM_2D;
+    linear_surface.width = width;
+    linear_surface.height = height;
+    linear_surface.depth = 1;
+    linear_surface.numMips = numMips;
+    linear_surface.format = format;
+    linear_surface.aa = GX2_AA_MODE_1X;
+    linear_surface.use = GX2_SURFACE_USE_TEXTURE;
+    linear_surface.tileMode = GX2_TILE_MODE_LINEAR_SPECIAL;
+    linear_surface.swizzle = 0;
+
+    GX2CalcSurfaceSizeAndAlignment(&linear_surface);
+
+    // Allocate output buffer
+    const size_t imageOffs = sizeof(DDSHeader);
+    const size_t mipOffs = imageOffs + linear_surface.imageSize;
+    u8* file = (u8*)malloc(mipOffs + linear_surface.mipSize);
+
+    // Set the image data pointer
+    linear_surface.imagePtr = file + imageOffs;
+
+    // Set the mip data pointer
+    if (numMips > 1)
+        linear_surface.mipPtr = file + mipOffs;
+    else
+        linear_surface.mipPtr = nullptr;
+
+    // Untile our texture
+    GX2CopySurface(&texture->surface, 0, 0, &linear_surface, 0, 0);
+    for (u32 i = 1; i < numMips; i++)
+        GX2CopySurface(&texture->surface, i, 0, &linear_surface, i, 0);
+
+    // Bits-per-pixel and bytes-per-pixel
+    const u8 bitsPerPixel = GX2GetSurfaceFormatBitsPerPixel(format);
+    const u8 bytesPerPixel = bitsPerPixel / 8;
+
+    // Create a new DDSHeader object
+    DDSHeader& header = *(new (file) DDSHeader);
+    std::memcpy(header.magic, "DDS ", 4);
+    header.size = sizeof(DDSHeader) - 4;
+    header.flags = (DDSFlags)(DDS_FLAGS_CAPS | DDS_FLAGS_HEIGHT |
+                              DDS_FLAGS_WIDTH | DDS_FLAGS_PIXEL_FORMAT);
+    header.height = 0;
+    header.width = 0;
+    header.pitchOrLinearSize = 0;
+    header.depth = 0;
+    header.mipMapCount = 1;
+    header.pixelFormat.size = sizeof(DDSPixelFormat);
+    header.pixelFormat.flags = (DDSPixelFormatFlags)0;
+    std::memset(header.pixelFormat.fourCC, 0, 4);
+    header.pixelFormat.rgbBitCount = 0;
+    header.pixelFormat.rBitMask = 0;
+    header.pixelFormat.gBitMask = 0;
+    header.pixelFormat.bBitMask = 0;
+    header.pixelFormat.aBitMask = 0;
+    header.caps = (DDSCaps)0;
+    header.caps2 = (DDSCaps2)0;
+
+    // Set misc. values
+    header.width = width;
+    header.height = height;
+    header.caps |= DDS_CAPS_TEXTURE;
+
+    // Set the mipmaps count and flags
+    if (numMips > 1)
+    {
+        header.mipMapCount = numMips;
+        header.flags |= DDS_FLAGS_MIP_MAP_COUNT;
+        header.caps |= (DDS_CAPS_COMPLEX | DDS_CAPS_MIP_MAP);
+    }
+
+    const u32 compSel = texture->compSel;
+
+    // Treat uncompressed formats differently
+    if (!GX2SurfaceIsCompressed(format))
+    {
+        // Set the bits-per-pixel
+        header.pixelFormat.rgbBitCount = bitsPerPixel;
+
+        // Set the pitch and its flag
+        header.pitchOrLinearSize = width * bytesPerPixel;
+        header.flags |= DDS_FLAGS_PITCH;
+
+        // Check if the Component Selectors are supported
+        const u8 r = compSel >> 24 & 0xFF;
+        const u8 g = compSel >> 16 & 0xFF;
+        const u8 b = compSel >>  8 & 0xFF;
+        const u8 a = compSel       & 0xFF;
+        assert(0 <= r && r <= 5 &&
+               0 <= g && g <= 5 &&
+               0 <= b && b <= 5 &&
+               0 <= a && a <= 5);
+        assert(r != 4 && g != 4 && b != 4 && a != 4 && "Exporting as DDS with Component Selector set to Zero is not supported!");
+        //   Check if One is used, but texture is not alpha-only
+        assert(((r != 5 && g != 5 && b != 5) || (r == g && g == b && a < 4)) && "Exporting as DDS with RGB Component Selectors set to One and not alpha-only is not supported!");
+
+        // Valid masks for this texture format
+        const auto& it_masks = validComps_export.find(format & 0x3F);
+        assert(it_masks != validComps_export.end());
+        const std::array<u32, 4>& masks = it_masks->second;
+
+        // Check alpha
+        bool alphaOnly = false;
+        if (a < 4)
+        {
+            // Validate Alpha
+            const u32 aMask = masks[a];
+            assert(aMask != 0 && "Invalid Alpha Channel Component Selector.");
+            header.pixelFormat.aBitMask = aMask;
+
+            if (r == g && g == b && b == 5)
+            {
+                // Alpha-only (specifically A8, but could be anything)
+                alphaOnly = true;
+                header.pixelFormat.flags |= DDS_PIXEL_FORMAT_FLAGS_ALPHA;
+            }
+            else
+            {
+                // Has alpha
+                header.pixelFormat.flags |= DDS_PIXEL_FORMAT_FLAGS_ALPHA_PIXELS;
+            }
+        }
+        else // a == 5
+        {
+            // No alpha
+            header.pixelFormat.aBitMask = 0;
+        }
+
+        // Handle colors if not alpha-only
+        if (!alphaOnly)
+        {
+            // Check for RGB vs Luminance
+            if (r == g && g == b)
+            {
+                // Luminance (specifically L8/LA4/LA8, but could be anything)
+                header.pixelFormat.flags |= DDS_PIXEL_FORMAT_FLAGS_LUMINANCE;
+            }
+            else
+            {
+                // Color
+                header.pixelFormat.flags |= DDS_PIXEL_FORMAT_FLAGS_RGB;
+            }
+
+            assert(r < 4 && g < 4 && b < 4 && "Invalid RGB Component Selectors.");
+
+            // Validate Red
+            const u32 rMask = masks[r];
+            assert(rMask != 0 && "Invalid Red Channel Component Selector.");
+
+            // Validate Green
+            const u32 gMask = masks[g];
+            assert(gMask != 0 && "Invalid Green Channel Component Selector.");
+
+            // Validate Blue
+            const u32 bMask = masks[b];
+            assert(bMask != 0 && "Invalid Blue Channel Component Selector.");
+
+            // Set the RGB masks
+            header.pixelFormat.rBitMask = rMask;
+            header.pixelFormat.gBitMask = gMask;
+            header.pixelFormat.bBitMask = bMask;
+        }
+    }
+    else
+    {
+        // Set fourCC and its flag
+        header.pixelFormat.flags |= DDS_PIXEL_FORMAT_FLAGS_FOUR_CC;
+        const auto& it_fourCC = fourCCs_export.find(format & 0x23F);
+        assert(it_fourCC != fourCCs_export.end());
+        std::memcpy(header.pixelFormat.fourCC, it_fourCC->second.c_str(), 4);
+
+        // Set the linear size and its flag
+        header.pitchOrLinearSize = linear_surface.imageSize;
+        header.flags |= DDS_FLAGS_LINEAR_SIZE;
+
+        // DDS is incapable of letting you select the components for BCn
+        if (format & 4 || compSel != 0x00010203)
+        {
+            std::clog << std::endl << "Warning: exporting as compressed DDS with application of RGBA Component Selectors is not possible!"
+                      << std::endl << "Be noted of the current RGBA Component Selectors when viewing the ouput DDS file or re-importing it."
+                      << std::endl << "If you want to see what this texture really looks like, consider exporting as PNG instead." << std::endl;
+        }
+    }
+
+    return file;
 }
 
 }

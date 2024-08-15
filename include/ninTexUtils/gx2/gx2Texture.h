@@ -121,6 +121,16 @@ void GX2TextureFromDDS(
 #endif
 );
 
+u8* GX2TextureToDDS(
+    const GX2Texture* texture,
+    size_t*           fileSize,
+#ifdef __cplusplus
+    bool              printInfo  = true
+#else
+    bool              printInfo
+#endif
+);
+
 #ifdef __cplusplus
 }
 #endif
