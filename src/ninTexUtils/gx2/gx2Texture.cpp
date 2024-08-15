@@ -270,10 +270,7 @@ void GX2TexturePrintInfo(const GX2Texture* tex)
 
 void GX2TextureFromLinear2D(GX2Texture* texture, u32 width, u32 height, u32 numMips, GX2SurfaceFormat format, u32 compSel, const u8* imagePtr, size_t imageSize, GX2TileMode tileMode, u32 swizzle, const u8* mipPtr, size_t mipSize, bool gfd_v7)
 {
-    if (numMips == 0)
-        numMips = 1;
-
-    // Create a new GX2Texture to store the untiled texture
+    // Create a new GX2Surface to store the untiled texture
     GX2Surface linear_surface;
     linear_surface.dim = GX2_SURFACE_DIM_2D;
     linear_surface.width = width;
@@ -297,6 +294,10 @@ void GX2TextureFromLinear2D(GX2Texture* texture, u32 width, u32 height, u32 numM
     {
         assert(mipSize >= linear_surface.mipSize);
         linear_surface.mipPtr = const_cast<u8*>(mipPtr);
+    }
+    else
+    {
+        linear_surface.mipPtr = nullptr;
     }
 
     // Set up GX2Texture for the tiled texture
@@ -322,14 +323,15 @@ void GX2TextureFromLinear2D(GX2Texture* texture, u32 width, u32 height, u32 numM
 
     GX2InitTextureRegs(texture, gfd_v7);
 
-    texture->surface.imagePtr = new u8[texture->surface.imageSize];
+    texture->surface.imagePtr = (u8*)malloc(texture->surface.imageSize);
     if (numMips > 1)
-        texture->surface.mipPtr = new u8[texture->surface.mipSize];
+        texture->surface.mipPtr = (u8*)malloc(texture->surface.mipSize);
     else
         texture->surface.mipPtr = nullptr;
 
     // Tile our texture
-    for (u32 i = 0; i < numMips; i++)
+    GX2CopySurface(&linear_surface, 0, 0, &texture->surface, 0, 0);
+    for (u32 i = 1; i < numMips; i++)
         GX2CopySurface(&linear_surface, i, 0, &texture->surface, i, 0);
 }
 
