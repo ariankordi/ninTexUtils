@@ -113,6 +113,51 @@ inline DDSHeader* DDSReadFilePtr(void* file)
 
 #ifdef __cplusplus
 }
+
+inline DDSFlags operator|(const DDSFlags& lhs, const DDSFlags& rhs)
+{
+    return (DDSFlags)((u32)lhs | (u32)rhs);
+}
+
+inline DDSFlags& operator|=(DDSFlags& lhs, const DDSFlags& rhs)
+{
+    lhs = lhs | rhs;
+    return lhs;
+}
+
+inline DDSPixelFormatFlags operator|(const DDSPixelFormatFlags& lhs, const DDSPixelFormatFlags& rhs)
+{
+    return (DDSPixelFormatFlags)((u32)lhs | (u32)rhs);
+}
+
+inline DDSPixelFormatFlags& operator|=(DDSPixelFormatFlags& lhs, const DDSPixelFormatFlags& rhs)
+{
+    lhs = lhs | rhs;
+    return lhs;
+}
+
+inline DDSCaps operator|(const DDSCaps& lhs, const DDSCaps& rhs)
+{
+    return (DDSCaps)((u32)lhs | (u32)rhs);
+}
+
+inline DDSCaps& operator|=(DDSCaps& lhs, const DDSCaps& rhs)
+{
+    lhs = lhs | rhs;
+    return lhs;
+}
+
+inline DDSCaps2 operator|(const DDSCaps2& lhs, const DDSCaps2& rhs)
+{
+    return (DDSCaps2)((u32)lhs | (u32)rhs);
+}
+
+inline DDSCaps2& operator|=(DDSCaps2& lhs, const DDSCaps2& rhs)
+{
+    lhs = lhs | rhs;
+    return lhs;
+}
+
 #endif
 
 #endif

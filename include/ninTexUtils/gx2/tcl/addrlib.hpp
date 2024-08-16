@@ -96,11 +96,11 @@ private:
     );
 
     static inline ADDR_E_RETURNCODE ComputeSurfaceAddrFromCoord(
-        ADDR_COMPUTE_SURFACE_ADDRFROMCOORD_INPUT* pIn,
+        const ADDR_COMPUTE_SURFACE_ADDRFROMCOORD_INPUT* pIn,
         ADDR_COMPUTE_SURFACE_ADDRFROMCOORD_OUTPUT* pOut
     );
     friend ADDR_E_RETURNCODE AddrComputeSurfaceAddrFromCoord(
-        ADDR_COMPUTE_SURFACE_ADDRFROMCOORD_INPUT* pIn,
+        const ADDR_COMPUTE_SURFACE_ADDRFROMCOORD_INPUT* pIn,
         ADDR_COMPUTE_SURFACE_ADDRFROMCOORD_OUTPUT* pOut
     );
 
@@ -153,17 +153,17 @@ private:
 class R600AddrLib : public AddrLib
 {
 private:
-    static inline u32 ComputeSurfaceNumSplits(
+    static inline u32 ComputeSurfaceTileSlices(
         AddrTileMode tileMode,
         u32 bpp,
         u32 numSamples
     );
 
-    static inline u32 ComputeBankPipeRotation(
+    static inline u32 ComputeSurfaceRotationFromTileMode(
         AddrTileMode tileMode
     );
 
-    static inline AddrTileMode DegradeBankSwapTileMode(
+    static inline AddrTileMode ConvertToNonBankSwappedMode(
         AddrTileMode baseTileMode
     );
 
@@ -250,7 +250,15 @@ private:
         u32* pDepthAlign
     );
 
-    static inline u32 ComputeSurfaceBankSwapWidth(
+    static inline bool IsThickMacroTiled(
+        AddrTileMode tileMode
+    );
+
+    static inline u32 ComputeMacroTileAspectRatio(
+        AddrTileMode tileMode
+    );
+
+    static inline u32 ComputeSurfaceBankSwappedWidth(
         AddrTileMode tileMode,
         u32 bpp,
         u32 numSamples,
@@ -292,8 +300,8 @@ private:
         u32* pDepthAlign
     );
 
-    static /* inline */ forceinline bool DispatchComputeSurfaceInfo(
-        ADDR_COMPUTE_SURFACE_INFO_INPUT* pIn,
+    static /* inline */ forceinline bool ComputeSurfaceInfo(
+        const ADDR_COMPUTE_SURFACE_INFO_INPUT* pIn,
         ADDR_COMPUTE_SURFACE_INFO_OUTPUT* pOut
     );
 
@@ -311,12 +319,12 @@ private:
         u32* pBitPosition
     );
 
-    static inline u32 ComputePipeFromCoord(
+    static inline u32 ComputePipeFromCoordWoRotation(
         u32 x,
         u32 y
     );
 
-    static inline u32 ComputeBankFromCoord(
+    static inline u32 ComputeBankFromCoordWoRotation(
         u32 x,
         u32 y
     );
@@ -339,18 +347,18 @@ private:
         u32* pBitPosition
     );
 
-    static /* inline */ forceinline u64 DispatchComputeSurfaceAddrFromCoord(
-        ADDR_COMPUTE_SURFACE_ADDRFROMCOORD_INPUT* pIn,
+    static /* inline */ forceinline u64 ComputeSurfaceAddrFromCoord(
+        const ADDR_COMPUTE_SURFACE_ADDRFROMCOORD_INPUT* pIn,
         ADDR_COMPUTE_SURFACE_ADDRFROMCOORD_OUTPUT* pOut
     );
 
     static /* inline */ forceinline ADDR_E_RETURNCODE HwlComputeSurfaceInfo(
-        ADDR_COMPUTE_SURFACE_INFO_INPUT* pIn,
+        const ADDR_COMPUTE_SURFACE_INFO_INPUT* pIn,
         ADDR_COMPUTE_SURFACE_INFO_OUTPUT* pOut
     );
 
     static inline ADDR_E_RETURNCODE HwlComputeSurfaceAddrFromCoord(
-        ADDR_COMPUTE_SURFACE_ADDRFROMCOORD_INPUT* pIn,
+        const ADDR_COMPUTE_SURFACE_ADDRFROMCOORD_INPUT* pIn,
         ADDR_COMPUTE_SURFACE_ADDRFROMCOORD_OUTPUT* pOut
     );
 

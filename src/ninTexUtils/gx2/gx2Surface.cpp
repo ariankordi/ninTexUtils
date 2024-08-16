@@ -480,6 +480,25 @@ void GX2CopySurface(const GX2Surface* src, u32 srcLevel, u32 srcSlice,
     #define PTR_BSWAP(x) ((void*)__builtin_bswap32((uint32_t)(x)))
 #endif
 
+
+void GX2SurfaceVerifyForSerialization(const GX2Surface* surf)
+{
+    assert(surf->width     != 0);
+    assert(surf->height    != 0);
+    assert(surf->numMips   <= 14);
+    assert(surf->imageSize != 0);
+    assert(surf->numMips   >  1 ?
+           surf->mipSize  != 0 :
+           surf->mipSize  == 0);
+    assert(surf->pitch     != 0);
+    assert(surf->format    >  GX2_SURFACE_FORMAT_INVALID);
+    assert(surf->imagePtr  == NULL);
+    assert(surf->mipPtr    == NULL);
+    assert(surf->tileMode  >  GX2_TILE_MODE_DEFAULT &&
+           surf->tileMode  <= GX2_TILE_MODE_LINEAR_SPECIAL);
+}
+
+
 void LoadGX2Surface(const void* data, GX2Surface* surf, bool serialized, bool isBigEndian)
 {
     const GX2Surface* src = (const GX2Surface*)data;
@@ -531,19 +550,7 @@ void LoadGX2Surface(const void* data, GX2Surface* surf, bool serialized, bool is
 
     if (serialized)
     {
-        assert(dst->width     != 0);
-        assert(dst->height    != 0);
-        assert(dst->numMips   <= 14);
-        assert(dst->imageSize != 0);
-        assert(dst->numMips   >  1 ?
-                dst->mipSize  != 0 :
-                dst->mipSize  == 0);
-        assert(dst->pitch     != 0);
-        assert(dst->format    >  GX2_SURFACE_FORMAT_INVALID);
-        assert(dst->imagePtr  == NULL);
-        assert(dst->mipPtr    == NULL);
-        assert(dst->tileMode  >  GX2_TILE_MODE_DEFAULT &&
-               dst->tileMode  <= GX2_TILE_MODE_LINEAR_SPECIAL);
+        GX2SurfaceVerifyForSerialization(dst);
 
         dst->depth = std::max(dst->depth, 1u);
         dst->numMips = std::max(dst->numMips, 1u);
