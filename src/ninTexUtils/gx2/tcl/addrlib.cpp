@@ -1,7 +1,9 @@
 #include <ninTexUtils/gx2/tcl/addrlib.h>
 
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wswitch"
+#endif // __GNUC__
 
 static inline bool IsPow2(u32 dim)
 {
@@ -2211,4 +2213,6 @@ ADDR_E_RETURNCODE AddrComputeSurfaceAddrFromCoord(
 
 }
 
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif // __GNUC__

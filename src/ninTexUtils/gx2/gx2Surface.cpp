@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstring>
-#include <iostream>
+#include <cstdio> // GX2SurfacePrintInfo
 
 extern "C"
 {
@@ -75,8 +75,10 @@ void GX2ComputeLevelSurfaceInfo(const GX2Surface* surf, u32 level, ADDR_COMPUTE_
         //assert(surf->dim != GX2_SURFACE_DIM_2D_MSAA &&
         //       surf->dim != GX2_SURFACE_DIM_2D_MSAA_ARRAY);
 
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wswitch"
+#endif // __GNUC__
 
         switch (surf->dim)
         {
@@ -105,7 +107,9 @@ void GX2ComputeLevelSurfaceInfo(const GX2Surface* surf, u32 level, ADDR_COMPUTE_
             pSurfInfoOut->depth = surf->depth;
         }
 
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif // __GNUC__
 
         u32 height = RoundUp(pSurfInfoOut->height, elemSize) / elemSize;
 
@@ -264,7 +268,8 @@ void GX2CalcSurfaceSizeAndAlignment(GX2Surface* surf)
                 }
             }
 
-            surf->imageSize = surfInfo.surfSize;
+            // NOTE: conversion from 'u64' to 'u32', possible loss of data
+            surf->imageSize = (u32)surfInfo.surfSize;
             surf->alignment = surfInfo.baseAlign;
             surf->pitch = surfInfo.pitch;
         }
@@ -292,7 +297,8 @@ void GX2CalcSurfaceSizeAndAlignment(GX2Surface* surf)
                 surf->mipOffset[level - 1] = surf->mipOffset[level - 2] + lastMipSize + mipPad;
         }
 
-        lastMipSize = surfInfo.surfSize;
+        // NOTE: conversion from 'u64' to 'u32', possible loss of data
+        lastMipSize = (u32)surfInfo.surfSize;
     }
 
     u32 mipSize = 0;
@@ -465,6 +471,7 @@ void GX2CopySurface(const GX2Surface* src, u32 srcLevel, u32 srcSlice,
             switch (bitsPerPixel)
             {
             case 128: *((u64*)pDstPixel + 1) = *((u64*)pSrcPixel + 1);
+                [[fallthrough]];
             case 64:  *(u64*)pDstPixel = *(u64*)pSrcPixel; break;
             case 32:  *(u32*)pDstPixel = *(u32*)pSrcPixel; break;
             case 16:  *(u16*)pDstPixel = *(u16*)pSrcPixel; break;
@@ -597,29 +604,22 @@ static const char* const tile_mode_str[17] = {
 
 void GX2SurfacePrintInfo(const GX2Surface* surf)
 {
-    std::cout << std::endl;
-    std::cout << "// ----- GX2Surface Info ----- "                       << std::endl;
-    std::cout << "  dim             = " << surface_dim_str[surf->dim]    << std::endl;
-    std::cout << "  width           = " << surf->width                   << std::endl;
-    std::cout << "  height          = " << surf->height                  << std::endl;
-    std::cout << "  depth           = " << surf->depth                   << std::endl;
-    std::cout << "  numMips         = " << surf->numMips                 << std::endl;
-    std::cout << "  format          = " << "0x" << std::hex              // TODO
-                                        << (u32)surf->format
-                                        << std::dec                      << std::endl;
-    std::cout << "  aa              = " << aa_mode[surf->aa]             << std::endl;
-    std::cout << "  use             = " << "0x" << std::hex              // TODO
-                                        << (u32)surf->use
-                                        << std::dec                      << std::endl;
-    std::cout << "  imageSize       = " << surf->imageSize               << std::endl;
-    std::cout << "  mipSize         = " << surf->mipSize                 << std::endl;
-    std::cout << "  tileMode        = " << tile_mode_str[surf->tileMode] << std::endl;
-    std::cout << "  swizzle         = " << surf->swizzle << ", 0x"
-                                        << std::hex
-                                        << surf->swizzle
-                                        << std::dec                      << std::endl;
-    std::cout << "  alignment       = " << surf->alignment               << std::endl;
-    std::cout << "  pitch           = " << surf->pitch                   << std::endl;
+    printf("\n");
+    printf("// ----- GX2Surface Info -----\n");
+    printf("  dim             = %s\n", surface_dim_str[surf->dim]);
+    printf("  width           = %u\n", surf->width);
+    printf("  height          = %u\n", surf->height);
+    printf("  depth           = %u\n", surf->depth);
+    printf("  numMips         = %u\n", surf->numMips);
+    printf("  format          = 0x%X\n", (uint32_t)surf->format); // TODO
+    printf("  aa              = %s\n", aa_mode[surf->aa]);
+    printf("  use             = 0x%X\n", (uint32_t)surf->use); // TODO
+    printf("  imageSize       = %u\n", surf->imageSize);
+    printf("  mipSize         = %u\n", surf->mipSize);
+    printf("  tileMode        = %s\n", tile_mode_str[surf->tileMode]);
+    printf("  swizzle         = %u, 0x%X\n", surf->swizzle, surf->swizzle);
+    printf("  alignment       = %u\n", surf->alignment);
+    printf("  pitch           = %u\n", surf->pitch);
 }
 
 }

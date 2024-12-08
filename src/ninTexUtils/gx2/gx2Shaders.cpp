@@ -3,8 +3,10 @@
 #include <cassert>
 #include <cstring>
 
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
+#endif // __GNUC__
 
 static inline void Swap32(void* dst, const void* src)
 {
@@ -687,4 +689,6 @@ void LoadGX2GeometryShader(const void* data, GX2GeometryShader* shader, bool all
 
 }
 
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif // __GNUC__
