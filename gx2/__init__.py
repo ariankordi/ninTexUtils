@@ -17,5 +17,7 @@ from .gx2Texture import Linear2DToGX2Texture
 
 from .gx2_texture_export_dds import GX2TextureToDDS
 from .gx2_texture_export_png import GX2TextureToPNG
+from .gx2_texture_export_ktx import GX2TextureToKTX
 from .gx2_texture_import_dds import DDSToGX2Texture
 from .gx2_texture_import_png import PNGToGX2Texture
+from .gx2_texture_import_ktx import KTXToGX2Texture
