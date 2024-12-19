@@ -18,12 +18,15 @@ bool isMacroTiled(GX2TileMode tileMode)
 
 #ifdef _MSC_VER
     #include <intrin.h>
-    static inline unsigned int __builtin_clz(unsigned int x) {
+    static inline unsigned int __builtin_clz(unsigned int x)
+    {
         unsigned long leading_zero = 0;
-        if (_BitScanReverse(&leading_zero, x)) {
+        if (_BitScanReverse(&leading_zero, x))
+        {
             return 31 - leading_zero;
         }
-        else {
+        else
+        {
             // Undefined behavior as __builtin_clz(0) is undefined
             return 32;
         }

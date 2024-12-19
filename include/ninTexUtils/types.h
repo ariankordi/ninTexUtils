@@ -100,10 +100,12 @@ static_assert(sizeof(f64) == 8);
 
 #ifdef _MSC_VER
     #include <stdlib.h>
-    static inline unsigned long __builtin_bswap32(unsigned long x) {
+    static inline unsigned long __builtin_bswap32(unsigned long x)
+    {
         return _byteswap_ulong(x);
     }
-    static inline unsigned long long __builtin_bswap64(unsigned long long x) {
+    static inline unsigned long long __builtin_bswap64(unsigned long long x)
+    {
         return _byteswap_uint64(x);
     }
 #endif

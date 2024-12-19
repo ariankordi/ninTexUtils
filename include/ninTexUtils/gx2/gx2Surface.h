@@ -2,6 +2,7 @@
 #define NIN_TEX_UTILS_GX2_SURFACE_H_
 
 #include "gx2Enum.h"
+#include <assert.h>
 
 typedef struct _GX2Surface
 {
